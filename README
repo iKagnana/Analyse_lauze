@@ -4,24 +4,46 @@
 
 Cette application web interactive, développée avec Streamlit, permet d'analyser la topographie de pierres naturelles (lauzes) et de simuler la remontée capillaire de l'eau entre deux pierres superposées sous différentes conditions météorologiques.
 
-
 ## 🚀 Fonctionnalités Principales
 
-* **Alignement 3D Automatique :** Calage spatial de maillages 3D (basé sur l'Analyse en Composantes Principales et l'algorithme KDTree) pour simuler la pose réaliste avec pureau et recouvrement.
-* **Extraction Topographique (Algorithme SNIP) :** Séparation mathématique de la macro-géométrie (Ondulation) et de la micro-géométrie (Rugosité) des pierres.
-* **Modèle Physique Hydrodynamique :** Algorithme de routage (Dijkstra) simulant l'infiltration de l'eau en fonction de la pression du vent, de l'intensité de la pluie, de la gravité (pente du toit) et de la capillarité.
-* **Intégration de la Loi de Wenzel :** Calcul du gradient surfacique en 2D pour adapter la force d'aspiration capillaire à la vraie rugosité de la roche.
-* **Moteur de Rendu 3D Intégré :** Visualisation interactive des coupes transversales et du film d'eau directement dans le navigateur via PyVista et stpyvista.
-
+- **Alignement 3D Automatique :** Calage spatial de maillages 3D (basé sur l'Analyse en Composantes Principales et l'algorithme KDTree) pour simuler la pose réaliste avec pureau et recouvrement.
+- **Extraction Topographique (Algorithme SNIP) :** Séparation mathématique de la macro-géométrie (Ondulation) et de la micro-géométrie (Rugosité) des pierres.
+- **Modèle Physique Hydrodynamique :** Algorithme de routage (Dijkstra) simulant l'infiltration de l'eau en fonction de la pression du vent, de l'intensité de la pluie, de la gravité (pente du toit) et de la capillarité.
+- **Intégration de la Loi de Wenzel :** Calcul du gradient surfacique en 2D pour adapter la force d'aspiration capillaire à la vraie rugosité de la roche.
+- **Moteur de Rendu 3D Intégré :** Visualisation interactive des coupes transversales et du film d'eau directement dans le navigateur via PyVista et stpyvista.
 
 ## 📂 Architecture du Projet
 
 L'application utilise le système de navigation multipage natif de Streamlit.
 
-* `app.py` : Point d'entrée principal et configuration du routage.
-* `recherche-scientifique/recherche-scientifique.py` : Module d'analyse isolée sur une seule lauze (idéal pour étudier l'impact pur de la rugosité avec un entrefer virtuel).
-* `multiples-lauzes/multiples-lauzes.py` : Simulateur avancé superposant deux maillages réels pour analyser le comportement de l'eau dans l'interstice exact.
+- `app.py` : Point d'entrée principal et configuration du routage.
+- `recherche-scientifique/recherche-scientifique.py` : Module d'analyse isolée (1 lauze).
+- `multiples-lauzes/multiples-lauzes.py` : Simulateur avancé (2 lauzes superposées).
 
+## 🔬 Approche Scientifique : Deux Modes d'Analyse
+
+Le pipeline est divisé en deux environnements distincts pour répondre à des besoins de recherche précis.
+
+### 1. Mode Recherche (1 Lauze Isolée)
+
+**Objectif :** Isoler les variables physiques pour comprendre le rôle intrinsèque de la topographie de la pierre.
+Dans ce mode, on simule une plaque parfaitement plate au-dessus de la lauze pour créer un **entrefer virtuel** contrôlé.
+
+- **Ce que l'on souhaite observer :**
+  - **L'influence des profils :** La topographie modifie-t-elle la fuite ? On peut comparer la progression de l'eau sur une surface artificiellement lissée (Ondulation) par rapport à sa surface naturelle (Rugosité).
+  - **La compétition météorologique :** Déterminer le facteur d'infiltration dominant en jouant sur les curseurs. Est-ce la pression dynamique du vent ($F_v$) ou le volume d'accumulation de la pluie ($F_{pluie}$) qui pousse l'eau le plus loin ?
+- **Explication scientifique :** Ici, aucun alignement n'est requis. La pierre est mathématiquement "mise à plat" (via PCA). L'entrefer (l'espace au-dessus de la pierre) étant constant et virtuel, cela permet de valider les équations capillaires pures et l'impact exclusif du coefficient de rugosité de Wenzel.
+
+### 2. Mode Simulation (2 Lauzes Superposées)
+
+**Objectif :** Étudier le comportement de l'eau en conditions réelles, là où la fuite naît de l'interaction (et du mauvais emboîtement) entre deux pierres naturelles distinctes.
+
+- **Ce que l'on souhaite observer :**
+  - **Les chemins préférentiels (Fingering) :** L'eau ne monte plus en ligne droite. Elle contourne les obstacles et s'engouffre dans les micro-canaux formés par les deux pierres.
+  - **L'efficacité du pureau :** Vérifier si la zone de recouvrement choisie par le couvreur est suffisante pour empêcher l'eau d'atteindre la charpente en cas de tempête.
+- **Explications scientifiques clés :**
+  - **L'Alignement 3D :** Contrairement au mode isolé, il faut simuler la pose physique du couvreur. La lauze supérieure est "tombée" numériquement sur la lauze inférieure (calcul de collision) en respectant un angle de pose. Les pierres reposent sur des points de contact stricts dictés par leur macro-géométrie.
+  - **L'Entrefer réel et hétérogène ($W$) :** L'espace entre les pierres n'est plus une constante virtuelle, c'est la soustraction mathématique exacte des deux profils 3D. Cette variation spatiale dicte le comportement de l'eau : là où l'espace est grand, la force capillaire s'effondre et l'eau s'arrête (bloquée par la gravité). Là où l'espace est microscopique (micro-fissures près des points de contact), l'effet "buvard" est décuplé et aspire violemment l'eau vers le haut du toit.
 
 ## 🛠️ Prérequis et Installation
 
@@ -37,6 +59,7 @@ pip install -r requirements.txt
 ```
 
 ## 🖥️ Configuration et Utilisation
+
 Les maillages 3D haute résolution (fichiers .obj, .ply, .vtp) dépassent la limite de téléchargement par défaut de Streamlit.
 
 Pour corriger cela de manière permanente, ce projet utilise un fichier de configuration local. Assurez-vous que la structure suivante existe à la racine du projet :
@@ -56,6 +79,7 @@ streamlit run app.py
 ```
 
 ## 💾 Gestion des Fichiers et Exports
+
 Le pipeline a été pensé pour éviter de recalculer inutilement des géométries lourdes. Il génère et lit différents formats optimisés :
 
 - Fichiers `.vtp` : Maillages 3D originaux ou alignés, exportables pour d'autres logiciels CAO/3D.
