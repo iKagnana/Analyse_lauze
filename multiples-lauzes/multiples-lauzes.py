@@ -19,8 +19,10 @@ st.set_page_config(page_title="Simulation de lauzes superposées", layout="wide"
 
 if "S" not in st.session_state:
     st.session_state.S = {}
-    st.session_state["galerie_multiples"] = []
 S = st.session_state.S
+
+if "galerie_multiples" not in st.session_state:
+    st.session_state["galerie_multiples"] = []
 
 # =======================================================================================
 # DICTIONNAIRE DES SCÉNARIOS PRÉDÉFINIS

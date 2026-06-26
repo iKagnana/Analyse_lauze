@@ -9,6 +9,15 @@ from scipy.spatial.transform import Rotation as R
 pv.OFF_SCREEN = True
 
 # =======================================================================================
+# CONFIG GENERALE ET CACHE
+# =======================================================================================
+st.set_page_config(page_title="Simulation de lauzes superposées", layout="wide", page_icon="🪨")
+
+if "S" not in st.session_state:
+    st.session_state.S = {}
+S = st.session_state.S
+
+# =======================================================================================
 # CODE COULEUR (COINS DE LA BOUNDING BOX)
 # =======================================================================================
 INFOS_POINTS = {

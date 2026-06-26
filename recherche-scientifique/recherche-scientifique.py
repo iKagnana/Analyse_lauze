@@ -15,6 +15,15 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 
 # =======================================================================================
+# CONFIG GENERALE ET CACHE
+# =======================================================================================
+st.set_page_config(page_title="Simulation de lauzes superposées", layout="wide", page_icon="🪨")
+
+if "S" not in st.session_state:
+    st.session_state.S = {}
+S = st.session_state.S
+
+# =======================================================================================
 # DICTIONNAIRE DES SCÉNARIOS PRÉDÉFINIS
 # =======================================================================================
 SCENARIOS_RECHERCHE = {
