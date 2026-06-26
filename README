@@ -1,0 +1,64 @@
+# 🪨 Pipeline Lauzes — Simulateur Hydro-Géométrique
+
+**Pipeline d'Analyse et de Simulation Capillaire pour Toitures en Lauzes (CESI - 2026)**
+
+Cette application web interactive, développée avec Streamlit, permet d'analyser la topographie de pierres naturelles (lauzes) et de simuler la remontée capillaire de l'eau entre deux pierres superposées sous différentes conditions météorologiques.
+
+
+## 🚀 Fonctionnalités Principales
+
+* **Alignement 3D Automatique :** Calage spatial de maillages 3D (basé sur l'Analyse en Composantes Principales et l'algorithme KDTree) pour simuler la pose réaliste avec pureau et recouvrement.
+* **Extraction Topographique (Algorithme SNIP) :** Séparation mathématique de la macro-géométrie (Ondulation) et de la micro-géométrie (Rugosité) des pierres.
+* **Modèle Physique Hydrodynamique :** Algorithme de routage (Dijkstra) simulant l'infiltration de l'eau en fonction de la pression du vent, de l'intensité de la pluie, de la gravité (pente du toit) et de la capillarité.
+* **Intégration de la Loi de Wenzel :** Calcul du gradient surfacique en 2D pour adapter la force d'aspiration capillaire à la vraie rugosité de la roche.
+* **Moteur de Rendu 3D Intégré :** Visualisation interactive des coupes transversales et du film d'eau directement dans le navigateur via PyVista et stpyvista.
+
+
+## 📂 Architecture du Projet
+
+L'application utilise le système de navigation multipage natif de Streamlit.
+
+* `app.py` : Point d'entrée principal et configuration du routage.
+* `recherche-scientifique/recherche-scientifique.py` : Module d'analyse isolée sur une seule lauze (idéal pour étudier l'impact pur de la rugosité avec un entrefer virtuel).
+* `multiples-lauzes/multiples-lauzes.py` : Simulateur avancé superposant deux maillages réels pour analyser le comportement de l'eau dans l'interstice exact.
+
+
+## 🛠️ Prérequis et Installation
+
+Assurez-vous d'avoir Python 3.9+ installé. Clonez ce dépôt, puis installez les dépendances requises via le fichier `requirements.txt` :
+
+```bash
+# Création d'un environnement virtuel (recommandé)
+python -m venv env
+source env/bin/activate  # Sur Windows : env\Scripts\activate
+
+# Installation des dépendances
+pip install -r requirements.txt
+```
+
+## 🖥️ Configuration et Utilisation
+Les maillages 3D haute résolution (fichiers .obj, .ply, .vtp) dépassent la limite de téléchargement par défaut de Streamlit.
+
+Pour corriger cela de manière permanente, ce projet utilise un fichier de configuration local. Assurez-vous que la structure suivante existe à la racine du projet :
+
+```
+.streamlit/
+└── config.toml
+```
+
+```toml
+[server]
+maxUploadSize = 400
+```
+
+```bash
+streamlit run app.py
+```
+
+## 💾 Gestion des Fichiers et Exports
+Le pipeline a été pensé pour éviter de recalculer inutilement des géométries lourdes. Il génère et lit différents formats optimisés :
+
+- Fichiers `.vtp` : Maillages 3D originaux ou alignés, exportables pour d'autres logiciels CAO/3D.
+- Fichiers `.vts` : Grilles structurées XML modernes. Parfait pour ouvrir les couches SNIP (Original, Ondulation, Rugosité) superposées dans ParaView.
+- Fichiers `.npz` : Archives NumPy compressées. C'est la "sauvegarde d'état" ultra-rapide du projet. Elle permet de sauter l'étape d'alignement 3D et de charger directement l'environnement d'analyse 2D.
+- Fichiers `.npy` : Matrices binaires contenant les résultats exacts (pixels mouillés) de la simulation d'infiltration.
