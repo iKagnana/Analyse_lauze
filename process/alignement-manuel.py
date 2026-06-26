@@ -191,50 +191,67 @@ if "mesh_bottom_raw" in st.session_state.S and "mesh_top_raw" in st.session_stat
     with colB:
         st.image(plot_mesh_with_obb(m_top_preview, anchors_top, "sienna"), caption="Lauze Mobile (Haut)", use_container_width=True)
 
-    # --- 4. TABLE D'ASSOCIATION UNIFIÉE (CODE COULEUR) ---
+# --- 4. TABLE D'ASSOCIATION UNIFIÉE (ENFERMÉE DANS UN FORMULAIRE 🛡️) ---
     st.subheader("🔗 3. Association des Couleurs")
-    st.info("Associez visuellement les points de la boîte englobante. Par défaut, les couleurs identiques sont associées.")
-    
-    mapping = {}
-    
-    # On crée une liste propre avec l'émoji, la couleur et le nom pour le menu déroulant
-    options_top = list(anchors_top.keys())
-    options_top_affichees = [f"{INFOS_POINTS[k]['emoji']} {k}" for k in options_top]
-    
-    for i, pt_bot in enumerate(anchors_bot.keys()):
-        info_color = INFOS_POINTS[pt_bot]
-        c_badge, c_arrow, c_select = st.columns([2, 1, 3])
-        
-        c_badge.markdown(f"{info_color['emoji']} **{pt_bot}**")
-        c_arrow.markdown("s'aligne avec 👉")
-        
-        # Le menu déroulant affiche l'émoji cible, rendant l'association évidente
-        choix_index = c_select.selectbox(f"Cible {pt_bot}", range(len(options_top_affichees)), format_func=lambda x: options_top_affichees[x], index=i, label_visibility="collapsed")
-        mapping[pt_bot] = options_top[choix_index]
+    st.info("Configurez toutes vos correspondances de couleurs ci-dessous. La page ne rechargera pas tant que vous n'aurez pas cliqué sur le gros bouton de calcul tout en bas.")
 
-    # --- 5. OPTIONS DE PRÉCISION ET CALCUL ---
-    st.subheader("⚙️ 4. Paramètres de Précision")
-    auto_collision = st.checkbox("🛡️ Activer la résolution automatique des collisions (Drop Test anti-pénétration)", value=True)
-    
-    with st.expander("🛠️ Ajustements Manuels Fins (Translation & Rotation)"):
+    # Ouverture du formulaire anti-rechargement
+    with st.form("formulaire_calage_haute_precision"):
+        
+        mapping = {}
+        options_top = list(anchors_top.keys())
+        options_top_affichees = [f"{INFOS_POINTS[k]['emoji']} {k}" for k in options_top]
+        
+        # Génération des lignes de sélection (Aucun blocage ici !)
+        for i, pt_bot in enumerate(anchors_bot.keys()):
+            info_color = INFOS_POINTS[pt_bot]
+            c_badge, c_arrow, c_select = st.columns([2, 1, 3])
+            
+            c_badge.markdown(f"{info_color['emoji']} **{pt_bot}**")
+            c_arrow.markdown("s'aligne avec 👉")
+            
+            choix_index = c_select.selectbox(
+                f"Cible {pt_bot}", 
+                range(len(options_top_affichees)), 
+                format_func=lambda x: options_top_affichees[x], 
+                index=i, 
+                label_visibility="collapsed"
+            )
+            mapping[pt_bot] = options_top[choix_index]
+
+        st.write("---") # Petite ligne de séparation esthétique dans le formulaire
+        
+        # --- 5. OPTIONS DE PRÉCISION (TOUJOURS DANS LE FORMULAIRE) ---
+        st.subheader("⚙️ 4. Paramètres de Précision")
+        auto_collision = st.checkbox("🛡️ Activer la résolution automatique des collisions (Drop Test anti-pénétration)", value=True)
+        
+        # On affiche les sliders directement (ils ne feront plus ramer la page !)
+        st.markdown("**Ajustements Manuels Fins (Post-Calage) :**")
         cm1, cm2, cm3 = st.columns(3)
         t_x = cm1.slider("Translation X (mm)", -50.0, 50.0, 0.0, 0.1)
         t_y = cm2.slider("Translation Y (mm)", -50.0, 50.0, 0.0, 0.1)
         t_z = cm3.slider("Translation Z (mm)", -50.0, 50.0, 0.0, 0.1)
+        
         cm4, cm5, cm6 = st.columns(3)
         r_x = cm4.slider("Rotation X / Roulis (°)", -30.0, 30.0, 0.0, 0.5)
         r_y = cm5.slider("Rotation Y / Tangage (°)", -30.0, 30.0, 0.0, 0.5)
         r_z = cm6.slider("Rotation Z / Lacet (°)", -180.0, 180.0, 0.0, 1.0)
 
-    if st.button("🔄 Lancer l'alignement mathématique", type="primary", use_container_width=True):
+        # ATTENTION : Le bouton doit obligatoirement être un "form_submit_button"
+        bouton_calcul = st.form_submit_button("🔄 Lancer l'alignement mathématique", type="primary", use_container_width=True)
+
+    # --- 6. EXÉCUTION DU CALCUL (HORS DU FORMULAIRE) ---
+    # Si l'utilisateur a cliqué sur le bouton du formulaire, on traite les données d'un coup
+    if bouton_calcul:
         with st.spinner("Exécution du pipeline géométrique (Procruste + KDTree)..."):
             
             matrix_bot = np.array([anchors_bot[k] for k in anchors_bot.keys()])
             matrix_top = np.array([anchors_top[mapping[k]] for k in anchors_bot.keys()])
             
-            # On aligne le maillage "pré-flippé"
+            # Alignement mathématique
             caled_top = align_meshes_multi_points(m_bot_preview, m_top_preview, matrix_bot, matrix_top)
             
+            # Gestion de la collision
             if auto_collision:
                 caled_top, z_offset_applied = resolve_mesh_collisions(m_bot_preview, caled_top)
                 st.info(f"🛡️ Physique : La lauze supérieure a été déplacée verticalement de **{z_offset_applied:.2f} mm** pour corriger l'interpénétration.")
@@ -246,7 +263,7 @@ if "mesh_bottom_raw" in st.session_state.S and "mesh_top_raw" in st.session_stat
             st.session_state.S["top_final"] = final_top
             st.session_state.S["calage_reussi"] = True
 
-    # --- 6. EXPORT ET RÉSULTATS ---
+    # --- 7. EXPORT ET RÉSULTATS ---
     if st.session_state.S.get("calage_reussi", False):
         st.subheader("5. Rendu de Contrôle et Téléchargement")
         
