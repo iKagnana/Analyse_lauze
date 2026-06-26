@@ -422,60 +422,92 @@ tab_align, tab_profiles, tab_sim, tab_cross, tab_gallery, tab_guide = st.tabs([
 # TAB 1 : ALIGNEMENT
 # ---------------------------------------------------------------------------------------
 with tab_align:
-    st.subheader("Calage Géométrique")
+    st.subheader("Calage Géométrique & Pureau")
+    
     if "mesh_bottom_raw" not in S and "bot_final" not in S:
-        st.warning("Veuillez charger des maillages bruts dans la barre latérale.")
-    elif "bot_final" in S and "mesh_bottom_raw" not in S:
-        st.info("ℹ️ Pas besoin de l'alignement en important directement des maillages déjà calés (.vtp).")
+        st.warning("Veuillez charger des maillages dans la barre latérale.")
     else:
+        # --- CHOIX DU MODE D'ALIGNEMENT ---
+        mode_options = ["1. Automatique (Depuis les fichiers bruts)"]
+        if S.get("calage_reussi", False):
+            mode_options.append("2. Conserver l'alignement manuel OBB 🌟")
+            
+        mode_calage = st.radio(
+            "Base de travail :", 
+            mode_options, 
+            index=len(mode_options)-1, # Sélectionne l'OBB par défaut s'il existe
+            horizontal=True
+        )
+        
         c1, c2, c3 = st.columns(3)
-        pureau_mm = c1.slider("Pureau (X, mm)", -50.0, 100.0, 30.0, 1.0)
-        rotate_z  = c2.slider("Rotation Z (°)", -180.0, 180.0, 90.0, 5.0)
+        pureau_mm = c1.slider("Pureau (Glissement X, mm)", -50.0, 150.0, 30.0, 1.0)
+        
+        # La rotation Z n'est utile que pour le mode automatique
+        rotate_z = c2.slider("Rotation Z globale (°)", -180.0, 180.0, 90.0, 5.0) if "1." in mode_calage else 0
         tolerance = c3.slider("Seuil contact (mm)", 0.05, 5.0, 0.5, 0.05)
 
-        if st.button("🔄 Calculer l'alignement", type="primary") or "bot_final" in S:
-            if ("bot_final" not in S
-                    or S.get("last_pureau") != pureau_mm
-                    or S.get("last_rot") != rotate_z):
-                with st.spinner("Calcul spatial en cours..."):
+        if st.button("🔄 Appliquer le Pureau et la Gravité", type="primary"):
+            with st.spinner("Calcul spatial en cours..."):
+                
+                if "2." in mode_calage:
+                    # --- MODE CONSERVATION OBB ---
+                    # On récupère les lauzes parfaitement alignées manuellement
+                    m_bot = S["bot_final"].copy()
+                    m_top_coulisse = S["top_final"].copy()
+                    
+                    # 1. On la fait coulisser sur l'axe X (Pureau)
+                    m_top_coulisse.points[:, 0] += pureau_mm
+                    
+                    # 2. On la soulève virtuellement de 10 cm pour être sûr qu'elle soit au-dessus
+                    m_top_coulisse.points[:, 2] += 100.0
+                    
+                    # 3. Drop Test : On la laisse tomber jusqu'au premier point de contact
+                    from scipy.spatial import cKDTree
+                    tree = cKDTree(m_bot.points[:, :2])
+                    
+                    # On allège le calcul pour la recherche si la pierre est énorme
+                    top_calc = m_top_coulisse.decimate(0.9) if m_top_coulisse.n_points > 50000 else m_top_coulisse
+                    _, indices = tree.query(top_calc.points[:, :2], k=1)
+                    
+                    z_gaps = top_calc.points[:, 2] - m_bot.points[indices, 2]
+                    min_gap = np.min(z_gaps)
+                    
+                    m_top_coulisse.points[:, 2] -= min_gap
+                    
+                    S["bot_final"] = m_bot
+                    S["top_final"] = m_top_coulisse
+                    S["chute"] = -min_gap
+                    
+                else:
+                    # --- MODE AUTOMATIQUE ORIGINAL ---
                     S["bot_final"], S["top_final"], S["chute"] = align_pipeline(
-                        S["mesh_bottom_raw"], S["mesh_top_raw"], pureau_mm, rotate_z
+                        S["mesh_bottom_raw"], 
+                        S["mesh_top_raw"], 
+                        pureau_mm, 
+                        rotate_z
                     )
-                    S.update({"last_pureau": pureau_mm, "last_rot": rotate_z})
+                    
+                S.update({"last_pureau": pureau_mm, "last_rot": rotate_z})
+                st.success(f"Position verrouillée ! Chute verticale effectuée : {S.get('chute', 0):.2f} mm.")
 
-            st.success(f"Butée trouvée. Chute verticale : -{S.get('chute', 0):.2f} mm.")
-
-            if st.checkbox("👁️ Afficher la vue 3D de l'alignement (Ralentit la page)", value=False):
+        # --- VISUALISATION ---
+        if "bot_final" in S:
+            if st.checkbox("👁️ Afficher la vue 3D de l'assemblage (Ralentit la page)", value=False):
                 contact_pts = count_contact_points(S["bot_final"], S["top_final"], tolerance=tolerance)
-                st.metric("Points d'appui trouvés", len(contact_pts))
-                if not disable_visu:
-                    import pyvista as pv
-                    pv.OFF_SCREEN = True
-                    colA, colB = st.columns(2)
-                    with colA:
-                        pl = pv.Plotter(window_size=[500, 400])
-                        pl.add_mesh(S["bot_final"], color="gray")
-                        pl.add_mesh(S["top_final"], color="sienna")
-                        pl.view_isometric()
-                        show_mesh(pl, "overview", use_3d_widget, disable_visu)
-                    with colB:
-                        pl2 = pv.Plotter(window_size=[500, 400])
-                        pl2.add_mesh(S["bot_final"], color="lightgray")
-                        pl2.add_mesh(S["top_final"], color="sienna", opacity=0.3)
-                        if len(contact_pts) > 0:
-                            pl2.add_mesh(
-                                pv.PolyData(contact_pts).glyph(geom=pv.Sphere(radius=tolerance * 2.5)),
-                                color="red"
-                            )
-                        pl2.view_isometric()
-                        show_mesh(pl2, "contacts", use_3d_widget, disable_visu)
-
-    if "bot_final" in S:
-        st.divider()
-        if st.button("💾 Exporter les maillages alignés (.vtp)", type="primary"):
-            S["bot_final"].save(os.path.join(export_dir, "lauze_bottom_aligned.vtp"))
-            S["top_final"].save(os.path.join(export_dir, "lauze_top_aligned.vtp"))
-            st.success("Maillages exportés !")
+                st.metric("Points d'appui trouvés (Contact strict)", len(contact_pts))
+                
+                import pyvista as pv
+                pl = pv.Plotter(window_size=[700, 400])
+                pl.set_background("white")
+                pl.add_mesh(S["bot_final"], color="lightgray", label="Lauze Bas")
+                pl.add_mesh(S["top_final"], color="sienna", opacity=0.8, label="Lauze Haut (Pureau appliqué)")
+                
+                if len(contact_pts) > 0:
+                    pl.add_mesh(pv.PolyData(contact_pts).glyph(geom=pv.Sphere(radius=tolerance*2)), color="red", label="Points de contact")
+                
+                pl.add_legend()
+                pl.view_isometric()
+                st.image(pl.screenshot(return_img=True), use_container_width=True)
 
 # ---------------------------------------------------------------------------------------
 # TAB 2 : PROFILS SNIP
