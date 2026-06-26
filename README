@@ -1,8 +1,8 @@
 # 🪨 Pipeline Lauzes — Simulateur Hydro-Géométrique
 
-**Pipeline d'Analyse et de Simulation Capillaire pour Toitures en Lauzes (CESI - 2026)**
+** Pipeline d'analyse de la concomitance vent-pluie pour la simulation des remontées d'eau et l'évaluation de l'étanchéité des toitures en lauzes (CESI, 2026) **
 
-Cette application web interactive, développée avec Streamlit, permet d'analyser la topographie de pierres naturelles (lauzes) et de simuler la remontée capillaire de l'eau entre deux pierres superposées sous différentes conditions météorologiques.
+Cette application web interactive, développée avec Streamlit, permet d'analyser la topologie de pierres naturelles (lauzes) et de simuler la remontée capillaire de l'eau entre deux pierres superposées sous différentes conditions météorologiques.
 
 ## 🚀 Fonctionnalités Principales
 
