@@ -14,10 +14,12 @@ st.set_page_config(page_title="Analyse des lauzes", page_icon=":bar_chart:", lay
 # Définition des pages
 recherche_scientifique = st.Page("recherche-scientifique/recherche-scientifique.py", title="Recherche scientifique - 1 lauze", icon="🔬")
 multiples_lauzes = st.Page("multiples-lauzes/multiples-lauzes.py", title="Analyse de lauzes superposées", icon="📚")
+process = st.Page("process/alignement-manuel.py", title="Alignement manuel", icon="🛠️")
 
 # CRÉATION DE LA NAVIGATION
 pg = st.navigation({
     "Mode Recherche": [recherche_scientifique],
+    "Mode Process": [process],
     "Mode Simulation": [multiples_lauzes]
 })
 
